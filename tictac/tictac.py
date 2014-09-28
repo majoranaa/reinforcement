@@ -14,6 +14,7 @@ pyglet.gl.glEnable (pyglet.gl.GL_LINE_SMOOTH);
 pyglet.gl.glHint (pyglet.gl.GL_LINE_SMOOTH_HINT, pyglet.gl.GL_DONT_CARE)   
 pyglet.gl.glClearColor(1,1,1,1)
 pyglet.gl.glLineWidth(3)
+
 main_batch = pyglet.graphics.Batch()
 circ_res = 50 # 50 points per circle
 
@@ -22,18 +23,32 @@ title = pyglet.text.Label(text='TicTacToe',
                           anchor_x='center',color=(0,0,0,255),
                           anchor_y='bottom',batch=main_batch)
                           
-vertex_list = pyglet.graphics.vertex_list(8,
-                                          ('v2i',(window.width//3,0,
-                                                  window.width//3,window.height-gap,
-                                                  2*window.width//3,0,
-                                                  2*window.width//3,window.height-gap,
-                                                  0,(window.height-gap)//3,
-                                                  window.width,(window.height-gap)//3,
-                                                  0,2*(window.height-gap)//3,
-                                                  window.width,2*(window.height-gap)//3)),
-                                          ('c3B',(0,0,0)*8))
+#vertex_list = pyglet.graphics.vertex_list(8,
+#                                          ('v2i',(window.width//3,0,
+#                                                  window.width//3,window.height-gap,
+#                                                  2*window.width//3,0,
+#                                                  2*window.width//3,window.height-gap,
+#                                                  0,(window.height-gap)//3,
+#                                                  window.width,(window.height-gap)//3,
+#                                                  0,2*(window.height-gap)//3,
+#                                                  window.width,2*(window.height-gap)//3)),
+#                                          ('c3B',(0,0,0)*8))
 
-vertex_list_circ = pyglet.graphics.vertex_list_indexed(0,[],('v2i'),('c3B'))
+#vertex_list_circ = pyglet.graphics.vertex_list_indexed(0,[],('v2i'),('c3B'))
+
+vertex_list = main_batch.add(8, pyglet.gl.GL_LINES, None,
+                             ('v2i',(window.width//3,0,
+                                     window.width//3,window.height-gap,
+                                     2*window.width//3,0,
+                                     2*window.width//3,window.height-gap,
+                                     0,(window.height-gap)//3,
+                                     window.width,(window.height-gap)//3,
+                                     0,2*(window.height-gap)//3,
+                                     window.width,2*(window.height-gap)//3)),
+                             ('c3B',(0,0,0)*8))
+
+#vertex_list_circ = main_batch.add_indexed(2, pyglet.gl.GL_LINES, None, [0,1], ('v2i',(0,0,100,100)),('c3B',(0,0,0,0,0,0)))
+vertex_list_circ = None
 
 x_turn = True
 won = False
@@ -43,16 +58,13 @@ boxes = np.zeros((3,3),dtype=int)
 def on_draw():
     window.clear()
     
-    # draw board
-    vertex_list.draw(pyglet.gl.GL_LINES)
-    vertex_list_circ.draw(pyglet.gl.GL_LINES)
-    
+    # draw board    
     main_batch.draw()
 
 count = 0
 @window.event
 def on_mouse_press(x,y,button,modifiers):
-    global x_turn, circ_res, won, main_batch,count
+    global x_turn, circ_res, won, main_batch,count, vertex_list, vertex_list_circ
     if button != mouse.LEFT or won: return
     if y > window.height - gap: return    
     x_off = x//(window.width//3)
@@ -62,22 +74,32 @@ def on_mouse_press(x,y,button,modifiers):
     if x_turn:
         # draw x
         vertex_list.resize(vertex_list.get_size()+4)
-        #print vertex_list.vertices[-8:]
+        
         vertex_list.vertices[-8:] = [int((x_off+.1)*(window.width//3)),int((2-y_off+.9)*((window.height-gap)//3)),
                                      int((x_off+.9)*(window.width//3)),int((2-y_off+.1)*((window.height-gap)//3)),
                                      int((x_off+.1)*(window.width//3)),int((2-y_off+.1)*((window.height-gap)//3)),
                                      int((x_off+.9)*(window.width//3)),int((2-y_off+.9)*((window.height-gap)//3))]
                                      
         boxes[x_off][y_off] = 1 # X
+        
+        #print vertex_list.vertices[-8:]
     else:
-        num_ver = vertex_list_circ.count
-        vertex_list_circ.resize(vertex_list_circ.get_size()+circ_res,vertex_list_circ.index_count+(circ_res*2))
         step = np.pi*2/circ_res
         points = [np.array(((x_off+.5)*(window.width//3),(2-y_off+.5)*((window.height-gap)//3))) + np.dot(np.array([[np.cos(step*i),-np.sin(step*i)],[np.sin(step*i),np.cos(step*i)]]),np.array(((window.width//6)-10,0))) for i in xrange(circ_res)]
-        vertex_list_circ.vertices[-(circ_res*2):] = [int(item) for sublist in points for item in sublist]
-        vertex_list_circ.colors[-(circ_res*3):] = [0]*(circ_res*3)
-        indices = [[i+num_ver,(i+1)%circ_res+num_ver] for i in xrange(circ_res)]
-        vertex_list_circ.indices[-(circ_res*2):] = [index for sublist in indices for index in sublist]
+
+        if vertex_list_circ is None:
+            indices = [[i,(i+1)%circ_res] for i in xrange(circ_res)]
+            vertex_list_circ = main_batch.add_indexed(circ_res, pyglet.gl.GL_LINES, None,
+                                                      [index for sublist in indices for index in sublist],
+                                                      ('v2i',tuple([int(item) for sublist in points for item in sublist])),
+                                                      ('c3B',tuple([0]*(circ_res*3))))
+        else:
+            num_ver = vertex_list_circ.count
+            vertex_list_circ.resize(vertex_list_circ.get_size()+circ_res,vertex_list_circ.index_count+(circ_res*2))
+            vertex_list_circ.vertices[-(circ_res*2):] = [int(item) for sublist in points for item in sublist]
+            vertex_list_circ.colors[-(circ_res*3):] = [0]*(circ_res*3)
+            indices = [[i+num_ver,(i+1)%circ_res+num_ver] for i in xrange(circ_res)]
+            vertex_list_circ.indices[-(circ_res*2):] = [index for sublist in indices for index in sublist]
         
         #print vertex_list_circ.vertices[:]
         #print vertex_list_circ.colors[:]
