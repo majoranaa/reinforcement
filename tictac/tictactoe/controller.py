@@ -12,7 +12,6 @@ import numpy as np
 gap = 30
 
 # pyglet setup
-#config = pyglet.gl.Config(sample_buffers=1, samples=4)
 window = pyglet.window.Window(300,300+gap)
 # antialiasing stuff
 pyglet.gl.glBlendFunc (pyglet.gl.GL_SRC_ALPHA, pyglet.gl.GL_ONE_MINUS_SRC_ALPHA)                             
@@ -154,5 +153,31 @@ def on_mouse_press(x,y,button,modifiers):
     
 
 class TicTacToeController:
+    
+    def __init__(self, config):
+        if config is not None:
+            print 'gave config'
+        else:
+            self.gap = 30
+            self.circ_res = 50
+        
+        self.window = pyglet.window.Window(300,300+gap)
+        
+        # pyglet configuration (antialiasing)
+        pyglet.gl.glBlendFunc (pyglet.gl.GL_SRC_ALPHA, pyglet.gl.GL_ONE_MINUS_SRC_ALPHA)                             
+        pyglet.gl.glEnable (pyglet.gl.GL_BLEND)                                                            
+        pyglet.gl.glEnable (pyglet.gl.GL_LINE_SMOOTH);                                                     
+        pyglet.gl.glHint (pyglet.gl.GL_LINE_SMOOTH_HINT, pyglet.gl.GL_DONT_CARE)   
+        pyglet.gl.glClearColor(1,1,1,1)
+        pyglet.gl.glLineWidth(3)
+        
+        self.main_batch = pyglet.graphics.Batch()
+        
+        self.title = pyglet.text.Label(text='TicTacToe',
+                                       x=window.width//2,y=window.height-gap,
+                                       anchor_x='center',color=(0,0,0,255),
+                                       anchor_y='bottom',batch=main_batch)
+         
+        
     def run(self):
         pyglet.app.run()
