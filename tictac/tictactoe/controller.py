@@ -8,160 +8,64 @@ Created on Sun Sep 28 14:19:14 2014
 import pyglet
 from pyglet.window import mouse
 import numpy as np
-
-gap = 30
-
-# pyglet setup
-window = pyglet.window.Window(300,300+gap)
-# antialiasing stuff
-pyglet.gl.glBlendFunc (pyglet.gl.GL_SRC_ALPHA, pyglet.gl.GL_ONE_MINUS_SRC_ALPHA)                             
-pyglet.gl.glEnable (pyglet.gl.GL_BLEND)                                                            
-pyglet.gl.glEnable (pyglet.gl.GL_LINE_SMOOTH);                                                     
-pyglet.gl.glHint (pyglet.gl.GL_LINE_SMOOTH_HINT, pyglet.gl.GL_DONT_CARE)   
-pyglet.gl.glClearColor(1,1,1,1)
-pyglet.gl.glLineWidth(3)
-
-main_batch = pyglet.graphics.Batch()
-circ_res = 50 # 50 points per circle
-
-title = pyglet.text.Label(text='TicTacToe',
-                          x=window.width//2,y=window.height-gap,
-                          anchor_x='center',color=(0,0,0,255),
-                          anchor_y='bottom',batch=main_batch)
-                          
-
-vertex_list = main_batch.add(8, pyglet.gl.GL_LINES, None,
-                             ('v2i',(window.width//3,0,
-                                     window.width//3,window.height-gap,
-                                     2*window.width//3,0,
-                                     2*window.width//3,window.height-gap,
-                                     0,(window.height-gap)//3,
-                                     window.width,(window.height-gap)//3,
-                                     0,2*(window.height-gap)//3,
-                                     window.width,2*(window.height-gap)//3)),
-                             ('c3B',(0,0,0)*8))
-
-vertex_list_circ = None
-
-x_turn = True
-won = False
-boxes = np.zeros((3,3),dtype=int)
-
-@window.event
-def on_draw():
-    window.clear()
-    
-    # draw board    
-    main_batch.draw()
-
-count = 0
-@window.event
-def on_mouse_press(x,y,button,modifiers):
-    global x_turn, circ_res, won, main_batch,count, vertex_list, vertex_list_circ
-    if button != mouse.LEFT or won: return
-    if y > window.height - gap: return    
-    x_off = x//(window.width//3)
-    y_off = 2-(y//((window.height-gap)//3))
-    if boxes[x_off][y_off]: return
-    #print x_off, y_off
-    if x_turn:
-        # draw x
-        vertex_list.resize(vertex_list.get_size()+4)
-        
-        vertex_list.vertices[-8:] = [int((x_off+.1)*(window.width//3)),int((2-y_off+.9)*((window.height-gap)//3)),
-                                     int((x_off+.9)*(window.width//3)),int((2-y_off+.1)*((window.height-gap)//3)),
-                                     int((x_off+.1)*(window.width//3)),int((2-y_off+.1)*((window.height-gap)//3)),
-                                     int((x_off+.9)*(window.width//3)),int((2-y_off+.9)*((window.height-gap)//3))]
-                                     
-        boxes[x_off][y_off] = 1 # X
-        
-        #print vertex_list.vertices[-8:]
-    else:
-        step = np.pi*2/circ_res
-        points = [np.array(((x_off+.5)*(window.width//3),(2-y_off+.5)*((window.height-gap)//3))) + np.dot(np.array([[np.cos(step*i),-np.sin(step*i)],[np.sin(step*i),np.cos(step*i)]]),np.array(((window.width//6)-10,0))) for i in xrange(circ_res)]
-
-        if vertex_list_circ is None:
-            indices = [[i,(i+1)%circ_res] for i in xrange(circ_res)]
-            vertex_list_circ = main_batch.add_indexed(circ_res, pyglet.gl.GL_LINES, None,
-                                                      [index for sublist in indices for index in sublist],
-                                                      ('v2i',tuple([int(item) for sublist in points for item in sublist])),
-                                                      ('c3B',tuple([0]*(circ_res*3))))
-        else:
-            num_ver = vertex_list_circ.count
-            vertex_list_circ.resize(vertex_list_circ.get_size()+circ_res,vertex_list_circ.index_count+(circ_res*2))
-            vertex_list_circ.vertices[-(circ_res*2):] = [int(item) for sublist in points for item in sublist]
-            vertex_list_circ.colors[-(circ_res*3):] = [0]*(circ_res*3)
-            indices = [[i+num_ver,(i+1)%circ_res+num_ver] for i in xrange(circ_res)]
-            vertex_list_circ.indices[-(circ_res*2):] = [index for sublist in indices for index in sublist]
-        
-        #print vertex_list_circ.vertices[:]
-        #print vertex_list_circ.colors[:]
-        #print vertex_list_circ.indices[:]
-        boxes[x_off][y_off] = 2 # O
-    
-    # column
-    for i in range(3):
-        if boxes[x_off][i] != 2-x_turn:
-            break
-        if i == 2:
-            won = True
-        
-    # row
-    for i in range(3):
-        if boxes[i][y_off] != 2-x_turn:
-            break
-        if i == 2:
-            won = True
-            
-    # diag
-    for i in range(3):
-        if boxes[i][i] != 2-x_turn:
-            break
-        if i == 2:
-            won = True
-            
-    # anti-diag
-    for i in range(3):
-        if boxes[i][2-i] != 2-x_turn:
-            break
-        if i == 2:
-            won = True
-            
-    if won:
-        if x_turn:
-            #print 'X WON!'
-            won_text = pyglet.text.Label(text='X Won!',
-                                         x = window.width//2, y = (window.height-gap)//2,
-                                         anchor_x='center',anchor_y='center',
-                                         color=(255,0,0,255),batch=main_batch)
-        else:
-            #print 'O WON!'
-            won_text = pyglet.text.Label(text='O Won!',
-                                         x = window.width//2, y = (window.height-gap)//2,
-                                         anchor_x='center',anchor_y='center',
-                                         color=(0,0,255,255),batch=main_batch)
-            
-    x_turn = not x_turn
-    count = count + 1
-    
-    if count == 9 and not won:
-        won_text = pyglet.text.Label(text='Draw!',
-                                         x = window.width//2, y = (window.height-gap)//2,
-                                         anchor_x='center',anchor_y='center',
-                                         color=(0,255,0,255),batch=main_batch)
-    
-    
+from game import TicTacToeGame
 
 class TicTacToeController:
     
-    def __init__(self, config):
-        if config is not None:
-            print 'gave config'
-        else:
-            self.gap = 30
-            self.circ_res = 50
+    def updateUI(self):
+        if self.game.x_turn():
+            # draw x
+            self.vertex_list.resize(self.vertex_list.get_size()+4)
         
-        self.window = pyglet.window.Window(300,300+gap)
+            self.vertex_list.vertices[-8:] = [int((x_off+.1)*(self.window.width//3)),int((2-y_off+.9)*((self.window.height-self.gap)//3)),
+                                     int((x_off+.9)*(self.window.width//3)),int((2-y_off+.1)*((self.window.height-self.gap)//3)),
+                                     int((x_off+.1)*(self.window.width//3)),int((2-y_off+.1)*((self.window.height-self.gap)//3)),
+                                     int((x_off+.9)*(self.window.width//3)),int((2-y_off+.9)*((self.window.height-self.gap)//3))]
+        else:
+            step = np.pi*2/self.circ_res
+            points = [np.array(((x_off+.5)*(self.window.width//3),(2-y_off+.5)*((self.window.height-self.gap)//3))) + np.dot(np.array([[np.cos(step*i),-np.sin(step*i)],[np.sin(step*i),np.cos(step*i)]]),np.array(((self.window.width//6)-10,0))) for i in xrange(self.circ_res)]
+
+            if self.vertex_list_circ is None:
+                indices = [[i,(i+1)%self.circ_res] for i in xrange(self.circ_res)]
+                self.vertex_list_circ = self.main_batch.add_indexed(self.circ_res, pyglet.gl.GL_LINES, None,
+                                                      [index for sublist in indices for index in sublist],
+                                                      ('v2i',tuple([int(item) for sublist in points for item in sublist])),
+                                                      ('c3B',tuple([0]*(self.circ_res*3))))
+            else:
+                num_ver = self.vertex_list_circ.count
+                self.vertex_list_circ.resize(self.vertex_list_circ.get_size()+self.circ_res,self.vertex_list_circ.index_count+(self.circ_res*2))
+                self.vertex_list_circ.vertices[-(self.circ_res*2):] = [int(item) for sublist in points for item in sublist]
+                self.vertex_list_circ.colors[-(self.circ_res*3):] = [0]*(self.circ_res*3)
+                indices = [[i+num_ver,(i+1)%self.circ_res+num_ver] for i in xrange(self.circ_res)]
+                self.vertex_list_circ.indices[-(self.circ_res*2):] = [index for sublist in indices for index in sublist]
+
+        if self.game.won():
+            if not self.game.x_turn(): # previous turn was X's
+                #print 'X WON!'
+                self.won_text = pyglet.text.Label(text='X Won!',
+                                         x = self.window.width//2, y = (self.window.height-self.gap)//2,
+                                         anchor_x='center',anchor_y='center',
+                                         color=(255,0,0,255),batch=self.main_batch)
+            else:
+                #print 'O WON!'
+                self.won_text = pyglet.text.Label(text='O Won!',
+                                         x = self.window.width//2, y = (self.window.height-self.gap)//2,
+                                         anchor_x='center',anchor_y='center',
+                                         color=(0,0,255,255),batch=self.main_batch)
+
+        if self.game.draw():
+            self.won_text = pyglet.text.Label(text='Draw!',
+                                         x = self.window.width//2, y = (self.window.height-self.gap)//2,
+                                         anchor_x='center',anchor_y='center',
+                                         color=(0,255,0,255),batch=self.main_batch)
+ 
+
+    def __init__(self):
+        self.gap = 30
+        self.circ_res = 50
+        
+        self.game = TicTacToeGame()
+        self.window = pyglet.window.Window(300,300+self.gap)
         
         # pyglet configuration (antialiasing)
         pyglet.gl.glBlendFunc (pyglet.gl.GL_SRC_ALPHA, pyglet.gl.GL_ONE_MINUS_SRC_ALPHA)                             
@@ -174,10 +78,42 @@ class TicTacToeController:
         self.main_batch = pyglet.graphics.Batch()
         
         self.title = pyglet.text.Label(text='TicTacToe',
-                                       x=window.width//2,y=window.height-gap,
+                                       x=self.window.width//2,y=self.window.height-self.gap,
                                        anchor_x='center',color=(0,0,0,255),
-                                       anchor_y='bottom',batch=main_batch)
-         
+                                       anchor_y='bottom',batch=self.main_batch)
         
+        self.vertex_list = self.main_batch.add(8, pyglet.gl.GL_LINES, None,
+          ('v2i',(self.window.width//3,0,
+             self.window.width//3,self.window.height-self.gap,
+             2*self.window.width//3,0,
+             2*self.window.width//3,self.window.height-self.gap,
+             0,(self.window.height-self.gap)//3,
+             self.window.width,(self.window.height-self.gap)//3,
+             0,2*(self.window.height-self.gap)//3,
+             self.window.width,2*(self.window.height-self.gap)//3)),
+          ('c3B',(0,0,0)*8))
+
+        self.vertex_list_circ = None
+
+        self.window.on_draw = self.on_draw
+        self.window.on_mouse_press = self.on_mouse_press
+
+    def on_draw(self):
+        self.window.clear()
+
+        # draw board
+        self.main_batch.draw()
+
+    def on_mouse_press(self,x,y,button,modifiers):
+        if button != mouse.LEFT or self.game.won(): return
+        if y > self.window.height - self.gap: return
+
+        x_off = x//(self.window.width//3)
+        y_off = 2-(y//((self.window.height-self.gap)//3))
+    
+        game.select(x_off, y_off)
+
+        updateUI(x_off, y_off)
+
     def run(self):
         pyglet.app.run()
