@@ -15,11 +15,14 @@ parser.add_argument('--dest', nargs='?', default='q_data.csv', help='File that s
 
 args = parser.parse_args()
 #assign args
-use_minimax = args.minimax
-use_td = args.td
+mode = 0 # 2-player
+if args.minimax:
+    mode = 1
+elif args.td:
+    mode = 2
 td_file = args.dest
 
-tictac_controller = controller.TicTacToeController()
+tictac_controller = controller.TicTacToeController(mode, td_file)
 
 if __name__ == '__main__':
     tictac_controller.run()
